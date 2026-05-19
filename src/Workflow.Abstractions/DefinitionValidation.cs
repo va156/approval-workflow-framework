@@ -1,7 +1,13 @@
 namespace Workflow.Abstractions;
 
+/// <summary>
+/// Validates and normalizes process definitions before publish/runtime usage.
+/// </summary>
 public static class WorkflowDefinitionValidator
 {
+    /// <summary>
+    /// Returns validation errors for a process definition.
+    /// </summary>
     public static IReadOnlyList<string> Validate(ProcessDefinition definition)
     {
         var errors = new List<string>();
@@ -40,6 +46,9 @@ public static class WorkflowDefinitionValidator
         return errors;
     }
 
+    /// <summary>
+    /// Adds default status catalog when definition does not include custom statuses.
+    /// </summary>
     public static void EnsureDefaultStatuses(ProcessDefinition definition)
     {
         if (definition.Statuses.Count > 0)

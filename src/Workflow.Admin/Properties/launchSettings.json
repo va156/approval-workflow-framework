@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Workflow.Admin": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:62387;http://localhost:62392"
+    }
+  }
+}

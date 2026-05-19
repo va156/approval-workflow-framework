@@ -1,56 +1,122 @@
-# Workflow Engine
+# Approval Workflow Framework
 
-Configurable approval workflow engine for .NET with process versioning, blocks, dynamic assignees, preview-before-save, and definition-level custom statuses.
+Configurable C# approval engine and integration framework for business requests (vacation, procurement, legal approvals, and similar flows).  
+The project is intentionally system-agnostic: business systems provide request data, while the engine manages definitions, runtime execution, deadlines, statuses, and audit history.
 
-## Projects
+## Contents
 
-- `src/Workflow.Abstractions` - shared contracts, DTOs, domain models, and definition validator.
-- `src/Workflow.Engine` - runtime engine, preview/start/action flow, synchronization primitives.
-- `src/Workflow.Persistence.EFCore` - SQL Server EF Core storage adapters.
-- `src/Workflow.Api` - REST API for definitions, status CRUD, preview, start, and step actions.
-- `src/Workflow.Admin` - lightweight admin API/UI for definition configuration and preview.
-- `src/Workflow.Integration.VacationDemo` - demo integration for vacation approval scenario.
-- `tests/Workflow.Engine.Tests` - integration-style engine tests.
+- [Architecture and design docs](#architecture-and-design-docs)
+- [Repository structure](#repository-structure)
+- [Implemented MVP capabilities](#implemented-mvp-capabilities)
+- [Quick start](#quick-start)
+- [Connection string](#connection-string)
+- [Core API](#core-api)
+- [Testing](#testing)
+- [Course mapping](#course-mapping)
 
-## Main MVP Features
+## Architecture and design docs
 
-- Definition versioning: `Draft -> Published -> Archived`.
-- Node types: `Step` and `Block` with configurable completion/rework policies.
-- Dynamic approvers: user/group/dynamic field (`ApproverFrom` pattern).
-- Group claim flow: group tasks start as `Unclaimed`, then `Claim`.
-- Preview mode: evaluate future route before saving request.
-- Working-day deadlines (weekends excluded).
-- Notification bindings and template-based notifications.
-- Definition-level custom status catalog and step status bindings.
+- [Architecture overview](docs/ARCHITECTURE.md)
+- [Database schema](docs/DATABASE_SCHEMA.md)
+- [API usage guide](docs/API_GUIDE.md)
+- [Dashboard guide](docs/DASHBOARD_GUIDE.md)
+- [Course requirements matrix](docs/COURSE_REQUIREMENTS_MATRIX.md)
 
-## Custom Statuses (Definition-Level)
+## Repository structure
 
-Each process definition contains status catalog entries (`WorkflowStatusDefinition`) and step bindings (`StepStatusBinding`) to semantics:
+- `src/Workflow.Abstractions` - contracts, DTOs, domain models, and definition validation.
+- `src/Workflow.Engine` - workflow runtime orchestration, preview/start/action behavior, synchronization primitives.
+- `src/Workflow.Persistence.EFCore` - SQL Server EF Core adapters and repositories.
+- `src/Workflow.Framework` - one-line host integration, auto-migration, and embedded dashboard.
+- `src/Workflow.Api` - REST API for process definitions, custom statuses, preview/start, and step actions.
+- `src/Workflow.Admin` - lightweight admin surface for definition operations and preview.
+- `src/Workflow.Integration.VacationDemo` - demo integration scenario for vacation requests.
+- `tests/Workflow.Engine.Tests` - engine behavior tests.
 
-- `Pending`
-- `Unclaimed`
-- `InProgress`
-- `Approved`
-- `Rejected`
-- `ReworkRequested`
-- `Cancelled`
-- `Expired`
+## Implemented MVP capabilities
 
-Runtime and preview include both:
+- Versioned process definitions with publish flow (`Draft -> Published -> Archived`).
+- One-line framework integration with auto-migration and embedded dashboard.
+- `Step` and `Block` nodes with completion/rework policy support.
+- Dynamic assignees (`User`, `Group`, `DynamicField`).
+- Group claim flow (`Unclaimed -> InProgress`).
+- Preview before save (`/process-instances/preview`).
+- Working-day deadline calculation (weekends excluded).
+- Notification template binding model.
+- Definition-level custom statuses and per-step semantic status bindings.
+- Runtime status history with technical and custom status values.
 
-- technical status (`StepStatus`)
-- configured custom status (`CustomStatusKey`, `CustomStatusName`)
+## Quick start
 
-## API Endpoints (Core)
+1. Build solution:
 
-Definition management:
+```bash
+dotnet build Workflow.sln
+```
+
+2. Ensure SQL Server is accessible (example uses LocalDB):
+
+```text
+(localdb)\MSSQLLocalDB
+```
+
+3. Apply migrations:
+
+```bash
+dotnet tool update --global dotnet-ef
+dotnet ef database update --project .\src\Workflow.Persistence.EFCore --startup-project .\src\Workflow.Api
+```
+
+4. Run API:
+
+```bash
+dotnet run --project .\src\Workflow.Api
+```
+
+5. Open Swagger:
+
+```text
+https://localhost:5001/swagger
+```
+
+6. Open built-in dashboard:
+
+```text
+https://localhost:5001/workflow-dashboard
+```
+
+Dashboard includes:
+
+- side menu sections (`Overview`, `Definitions`, `Instances`, `Failed`, `Retry`),
+- search and state filters,
+- direct step actions (`Claim`, `Approve`, `Rework`),
+- retry operation for failed/rework instances.
+
+## Connection string
+
+Connection string key: `WorkflowPrimary`
+
+Default local value:
+
+```text
+Server=(localdb)\MSSQLLocalDB;Database=WorkflowEngine;Trusted_Connection=True;TrustServerCertificate=True
+```
+
+Configured in:
+
+- `src/Workflow.Api/appsettings.json`
+- `src/Workflow.Admin/appsettings.json`
+
+## Core API
+
+Definitions:
 
 - `POST /process-definitions`
 - `PUT /process-definitions/{id}`
 - `POST /process-definitions/{id}/publish`
-- `GET /process-definitions/{id}/versions/{v}`
+- `GET /process-definitions/{id}/versions/{version}`
 
-Definition status CRUD:
+Definition custom statuses:
 
 - `GET /process-definitions/{id}/statuses`
 - `POST /process-definitions/{id}/statuses`
@@ -66,37 +132,47 @@ Runtime:
 - `POST /step-instances/{id}/reject`
 - `POST /step-instances/{id}/rework`
 
-## Database and Connection String
+Detailed request/response examples are available in [API guide](docs/API_GUIDE.md).
 
-Connection string name: `WorkflowPrimary`
+## Library-style integration (Hangfire-like)
 
-Default local value:
+In host application:
 
-`Server=(localdb)\MSSQLLocalDB;Database=WorkflowEngine;Trusted_Connection=True;TrustServerCertificate=True`
+```csharp
+builder.Services.AddWorkflowFramework(options =>
+{
+    options.ConnectionString = builder.Configuration.GetConnectionString("WorkflowPrimary")!;
+    options.DashboardPath = "/workflow-dashboard";
+    options.AutoMigrateDatabase = true;
+});
+```
 
-Configured in:
+At runtime startup:
 
-- `src/Workflow.Api/appsettings.json`
-- `src/Workflow.Admin/appsettings.json`
+```csharp
+app.UseWorkflowFrameworkDashboard();
+```
 
-## Build and Test
+This setup auto-creates/updates the workflow database schema and exposes the dashboard route.
 
-Build:
+Optional simple Basic auth:
 
-`dotnet build Workflow.sln`
+```json
+"WorkflowFramework": {
+  "DashboardAuthEnabled": true,
+  "DashboardUsername": "admin",
+  "DashboardPassword": "change-me"
+}
+```
 
-Tests:
+## Testing
 
-`dotnet test Workflow.sln -p:RollForward=Major`
+```bash
+dotnet test Workflow.sln -p:RollForward=Major
+```
 
-## Publish to GitHub
+## Course mapping
 
-Repository is prepared for open-source publication with MIT license.
+Scoring evidence and criterion-to-implementation mapping are documented in:
 
-After initializing git and setting remote repo name:
-
-1. `git add .`
-2. `git commit -m "Initial workflow engine MVP"`
-3. `gh repo create <repo-name> --public --source . --remote origin --push`
-
-If `<repo-name>` is not decided yet, choose it first and run step 3.
+- [Course requirements matrix](docs/COURSE_REQUIREMENTS_MATRIX.md)

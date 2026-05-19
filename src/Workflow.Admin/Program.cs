@@ -148,25 +148,45 @@ app.MapPost("/admin/definitions/{id:guid}/statuses", async (
 
 app.Run();
 
+/// <summary>
+/// Payload for creating definition in admin surface.
+/// </summary>
 public sealed class AdminCreateDefinitionRequest
 {
+    /// <summary>Stable process key.</summary>
     public required string ProcessKey { get; init; }
+    /// <summary>Definition display name.</summary>
     public required string Name { get; init; }
+    /// <summary>Definition-level custom statuses.</summary>
     public List<WorkflowStatusDefinition> Statuses { get; init; } = [];
+    /// <summary>Definition node collection.</summary>
     public required List<NodeDefinition> Nodes { get; init; }
 }
 
+/// <summary>
+/// Payload for admin preview operation.
+/// </summary>
 public sealed class AdminPreviewRequest
 {
+    /// <summary>Stable process key.</summary>
     public required string ProcessKey { get; init; }
+    /// <summary>Draft values used to calculate route.</summary>
     public required Dictionary<string, object?> DraftData { get; init; }
 }
 
+/// <summary>
+/// Payload for creating status entry from admin surface.
+/// </summary>
 public sealed class AdminUpsertStatusRequest
 {
+    /// <summary>Status key.</summary>
     public required string Key { get; init; }
+    /// <summary>Status display name.</summary>
     public required string DisplayName { get; init; }
+    /// <summary>Status description.</summary>
     public string? Description { get; init; }
+    /// <summary>Status semantic.</summary>
     public WorkflowStatusSemantic Semantic { get; init; }
+    /// <summary>Marks semantic default entry.</summary>
     public bool IsDefault { get; init; }
 }

@@ -1,0 +1,38 @@
+@startuml
+title WorkflowEngine Database Schema (MVP)
+
+entity WorkflowDefinitions {
+  *Id : uniqueidentifier <<PK>>
+  --
+  ProcessKey : nvarchar(200)
+  Version : int
+  Name : nvarchar(200)
+  Status : int
+  DefinitionJson : nvarchar(max)
+  CreatedAtUtc : datetimeoffset
+  UpdatedAtUtc : datetimeoffset
+}
+
+entity WorkflowInstances {
+  *Id : uniqueidentifier <<PK>>
+  --
+  ProcessKey : nvarchar(200)
+  DefinitionId : uniqueidentifier
+  DefinitionVersion : int
+  RequestId : nvarchar(450)
+  State : nvarchar(100)
+  InstanceJson : nvarchar(max)
+  CreatedAtUtc : datetimeoffset
+  UpdatedAtUtc : datetimeoffset
+}
+
+entity NotificationTemplates {
+  *Key : nvarchar(200) <<PK>>
+  --
+  SubjectTemplate : nvarchar(500)
+  BodyTemplate : nvarchar(max)
+}
+
+WorkflowInstances }o--|| WorkflowDefinitions : "DefinitionId -> Id (logical)"
+
+@enduml

@@ -5,12 +5,27 @@ using Workflow.Abstractions;
 
 namespace Workflow.Persistence.EFCore;
 
+/// <summary>
+/// EF Core database context for workflow definition and runtime storage.
+/// </summary>
 public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// Process definition versions.
+    /// </summary>
     public DbSet<WorkflowDefinitionEntity> Definitions => Set<WorkflowDefinitionEntity>();
+    /// <summary>
+    /// Runtime process instances.
+    /// </summary>
     public DbSet<WorkflowInstanceEntity> Instances => Set<WorkflowInstanceEntity>();
+    /// <summary>
+    /// Notification templates.
+    /// </summary>
     public DbSet<NotificationTemplateEntity> NotificationTemplates => Set<NotificationTemplateEntity>();
 
+    /// <summary>
+    /// Configures relational mappings for workflow entities.
+    /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<WorkflowDefinitionEntity>(entity =>
@@ -49,40 +64,73 @@ public sealed class WorkflowDbContext(DbContextOptions<WorkflowDbContext> option
     }
 }
 
+/// <summary>
+/// Persisted process definition version record.
+/// </summary>
 public sealed class WorkflowDefinitionEntity
 {
+    /// <summary>Definition identifier.</summary>
     public Guid Id { get; set; }
+    /// <summary>Stable process key.</summary>
     public string ProcessKey { get; set; } = string.Empty;
+    /// <summary>Definition version.</summary>
     public int Version { get; set; }
+    /// <summary>Definition name.</summary>
     public string Name { get; set; } = string.Empty;
+    /// <summary>Definition lifecycle status.</summary>
     public ProcessDefinitionStatus Status { get; set; }
+    /// <summary>Serialized definition JSON snapshot.</summary>
     public string DefinitionJson { get; set; } = string.Empty;
+    /// <summary>Creation timestamp.</summary>
     public DateTimeOffset CreatedAtUtc { get; set; }
+    /// <summary>Last update timestamp.</summary>
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }
 
+/// <summary>
+/// Persisted runtime process instance record.
+/// </summary>
 public sealed class WorkflowInstanceEntity
 {
+    /// <summary>Runtime instance identifier.</summary>
     public Guid Id { get; set; }
+    /// <summary>Stable process key.</summary>
     public string ProcessKey { get; set; } = string.Empty;
+    /// <summary>Definition identifier.</summary>
     public Guid DefinitionId { get; set; }
+    /// <summary>Definition version used at start.</summary>
     public int DefinitionVersion { get; set; }
+    /// <summary>Business request identifier.</summary>
     public string RequestId { get; set; } = string.Empty;
+    /// <summary>Aggregate process state.</summary>
     public string State { get; set; } = string.Empty;
+    /// <summary>Serialized runtime JSON snapshot.</summary>
     public string InstanceJson { get; set; } = string.Empty;
+    /// <summary>Creation timestamp.</summary>
     public DateTimeOffset CreatedAtUtc { get; set; }
+    /// <summary>Last update timestamp.</summary>
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }
 
+/// <summary>
+/// Persisted notification template record.
+/// </summary>
 public sealed class NotificationTemplateEntity
 {
+    /// <summary>Template key.</summary>
     public string Key { get; set; } = string.Empty;
+    /// <summary>Message subject template.</summary>
     public string SubjectTemplate { get; set; } = string.Empty;
+    /// <summary>Message body template.</summary>
     public string BodyTemplate { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// EF implementation of process definition repository.
+/// </summary>
 public sealed class EfProcessDefinitionRepository(WorkflowDbContext dbContext) : IProcessDefinitionRepository
 {
+    /// <inheritdoc />
     public async Task<ProcessDefinition?> GetPublishedByKeyAsync(string processKey, CancellationToken cancellationToken)
     {
         var entity = await dbContext.Definitions
@@ -93,12 +141,14 @@ public sealed class EfProcessDefinitionRepository(WorkflowDbContext dbContext) :
         return entity is null ? null : JsonSerializer.Deserialize<ProcessDefinition>(entity.DefinitionJson);
     }
 
+    /// <inheritdoc />
     public async Task<ProcessDefinition?> GetByIdAsync(Guid definitionId, CancellationToken cancellationToken)
     {
         var entity = await dbContext.Definitions.FirstOrDefaultAsync(x => x.Id == definitionId, cancellationToken);
         return entity is null ? null : JsonSerializer.Deserialize<ProcessDefinition>(entity.DefinitionJson);
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<ProcessDefinition>> GetByKeyAsync(string processKey, CancellationToken cancellationToken)
     {
         var entities = await dbContext.Definitions
@@ -113,6 +163,22 @@ public sealed class EfProcessDefinitionRepository(WorkflowDbContext dbContext) :
             .ToList();
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ProcessDefinition>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var entities = await dbContext.Definitions
+            .OrderBy(x => x.ProcessKey)
+            .ThenByDescending(x => x.Version)
+            .ToListAsync(cancellationToken);
+
+        return entities
+            .Select(x => JsonSerializer.Deserialize<ProcessDefinition>(x.DefinitionJson))
+            .Where(x => x is not null)
+            .Cast<ProcessDefinition>()
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public async Task UpsertAsync(ProcessDefinition definition, CancellationToken cancellationToken)
     {
         var existing = await dbContext.Definitions
@@ -141,14 +207,19 @@ public sealed class EfProcessDefinitionRepository(WorkflowDbContext dbContext) :
     }
 }
 
+/// <summary>
+/// EF implementation of process instance repository.
+/// </summary>
 public sealed class EfProcessInstanceRepository(WorkflowDbContext dbContext) : IProcessInstanceRepository
 {
+    /// <inheritdoc />
     public async Task<ProcessInstance?> GetByIdAsync(Guid instanceId, CancellationToken cancellationToken)
     {
         var entity = await dbContext.Instances.FirstOrDefaultAsync(x => x.Id == instanceId, cancellationToken);
         return entity is null ? null : JsonSerializer.Deserialize<ProcessInstance>(entity.InstanceJson);
     }
 
+    /// <inheritdoc />
     public async Task<ProcessInstance?> GetByStepIdAsync(Guid stepId, CancellationToken cancellationToken)
     {
         // JSON scan is acceptable for MVP and can be replaced with normalized runtime tables later.
@@ -165,6 +236,23 @@ public sealed class EfProcessInstanceRepository(WorkflowDbContext dbContext) : I
         return null;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ProcessInstance>> GetRecentAsync(int take, CancellationToken cancellationToken)
+    {
+        var safeTake = Math.Max(take, 1);
+        var entities = await dbContext.Instances
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .Take(safeTake)
+            .ToListAsync(cancellationToken);
+
+        return entities
+            .Select(x => JsonSerializer.Deserialize<ProcessInstance>(x.InstanceJson))
+            .Where(x => x is not null)
+            .Cast<ProcessInstance>()
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public async Task UpsertAsync(ProcessInstance instance, CancellationToken cancellationToken)
     {
         var existing = await dbContext.Instances
@@ -193,8 +281,12 @@ public sealed class EfProcessInstanceRepository(WorkflowDbContext dbContext) : I
     }
 }
 
+/// <summary>
+/// EF implementation of notification template repository.
+/// </summary>
 public sealed class EfNotificationTemplateRepository(WorkflowDbContext dbContext) : INotificationTemplateRepository
 {
+    /// <inheritdoc />
     public async Task<NotificationTemplate?> GetByKeyAsync(string key, CancellationToken cancellationToken)
     {
         var entity = await dbContext.NotificationTemplates.FirstOrDefaultAsync(x => x.Key == key, cancellationToken);
@@ -212,13 +304,23 @@ public sealed class EfNotificationTemplateRepository(WorkflowDbContext dbContext
     }
 }
 
+/// <summary>
+/// EF-backed unit of work implementation.
+/// </summary>
 public sealed class EfUnitOfWork(WorkflowDbContext dbContext) : IUnitOfWork
 {
+    /// <inheritdoc />
     public Task CommitAsync(CancellationToken cancellationToken) => dbContext.SaveChangesAsync(cancellationToken);
 }
 
+/// <summary>
+/// Dependency injection extensions for SQL Server persistence adapter.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers EF Core SQL Server persistence and repositories.
+    /// </summary>
     public static IServiceCollection AddWorkflowPersistenceSqlServer(this IServiceCollection services, string connectionString)
     {
         services.AddDbContext<WorkflowDbContext>(options => options.UseSqlServer(connectionString));

@@ -3,10 +3,16 @@ using Workflow.Abstractions;
 
 namespace Workflow.Api.Controllers;
 
+/// <summary>
+/// Endpoints for process definition versioning and custom status management.
+/// </summary>
 [ApiController]
 [Route("process-definitions")]
 public sealed class ProcessDefinitionsController(IProcessDefinitionRepository repository, IUnitOfWork unitOfWork) : ControllerBase
 {
+    /// <summary>
+    /// Creates a new draft process definition version.
+    /// </summary>
     [HttpPost]
     public async Task<ActionResult<ProcessDefinition>> CreateDraft([FromBody] CreateDefinitionRequest request, CancellationToken cancellationToken)
     {
@@ -34,6 +40,9 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
         return Ok(definition);
     }
 
+    /// <summary>
+    /// Updates an existing draft definition.
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<ProcessDefinition>> Update(Guid id, [FromBody] UpdateDefinitionRequest request, CancellationToken cancellationToken)
     {
@@ -57,6 +66,9 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
         return Ok(definition);
     }
 
+    /// <summary>
+    /// Publishes selected definition and archives previous published version.
+    /// </summary>
     [HttpPost("{id:guid}/publish")]
     public async Task<ActionResult> Publish(Guid id, CancellationToken cancellationToken)
     {
@@ -86,6 +98,9 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
         return NoContent();
     }
 
+    /// <summary>
+    /// Returns specific definition version for a process key.
+    /// </summary>
     [HttpGet("{id:guid}/versions/{version:int}")]
     public async Task<ActionResult<ProcessDefinition>> GetVersion(Guid id, int version, CancellationToken cancellationToken)
     {
@@ -100,6 +115,9 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
         return definition is null ? NotFound() : Ok(definition);
     }
 
+    /// <summary>
+    /// Returns status catalog configured for definition.
+    /// </summary>
     [HttpGet("{id:guid}/statuses")]
     public async Task<ActionResult<IReadOnlyList<WorkflowStatusDefinition>>> GetStatuses(Guid id, CancellationToken cancellationToken)
     {
@@ -113,6 +131,9 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
         return Ok(definition.Statuses);
     }
 
+    /// <summary>
+    /// Adds custom status to definition catalog.
+    /// </summary>
     [HttpPost("{id:guid}/statuses")]
     public async Task<ActionResult<WorkflowStatusDefinition>> CreateStatus(Guid id, [FromBody] UpsertStatusRequest request, CancellationToken cancellationToken)
     {
@@ -148,6 +169,9 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
         return Ok(created);
     }
 
+    /// <summary>
+    /// Updates existing status entry in definition catalog.
+    /// </summary>
     [HttpPut("{id:guid}/statuses/{statusKey}")]
     public async Task<ActionResult<WorkflowStatusDefinition>> UpdateStatus(Guid id, string statusKey, [FromBody] UpsertStatusRequest request, CancellationToken cancellationToken)
     {
@@ -180,6 +204,9 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
         return Ok(existing);
     }
 
+    /// <summary>
+    /// Deletes status from definition catalog when it is not used by step bindings.
+    /// </summary>
     [HttpDelete("{id:guid}/statuses/{statusKey}")]
     public async Task<ActionResult> DeleteStatus(Guid id, string statusKey, CancellationToken cancellationToken)
     {
@@ -231,26 +258,80 @@ public sealed class ProcessDefinitionsController(IProcessDefinitionRepository re
     }
 }
 
+/// <summary>
+/// Payload for creating a new definition draft.
+/// </summary>
 public sealed class CreateDefinitionRequest
 {
+    /// <summary>
+    /// Stable process identifier used to resolve published versions.
+    /// </summary>
     public required string ProcessKey { get; init; }
+
+    /// <summary>
+    /// Human-friendly process name.
+    /// </summary>
     public required string Name { get; init; }
+
+    /// <summary>
+    /// Optional status catalog configured by administrators.
+    /// </summary>
     public List<WorkflowStatusDefinition> Statuses { get; init; } = [];
+
+    /// <summary>
+    /// Configured process nodes including steps and blocks.
+    /// </summary>
     public required List<NodeDefinition> Nodes { get; init; }
 }
 
+/// <summary>
+/// Payload for updating process definition content.
+/// </summary>
 public sealed class UpdateDefinitionRequest
 {
+    /// <summary>
+    /// Human-friendly process name.
+    /// </summary>
     public required string Name { get; init; }
+
+    /// <summary>
+    /// Definition-level status catalog.
+    /// </summary>
     public List<WorkflowStatusDefinition> Statuses { get; init; } = [];
+
+    /// <summary>
+    /// Process nodes including steps and blocks.
+    /// </summary>
     public required List<NodeDefinition> Nodes { get; init; }
 }
 
+/// <summary>
+/// Payload for creating or updating status entries.
+/// </summary>
 public sealed class UpsertStatusRequest
 {
+    /// <summary>
+    /// Unique status key in definition scope.
+    /// </summary>
     public required string Key { get; init; }
+
+    /// <summary>
+    /// Display text shown to end users.
+    /// </summary>
     public required string DisplayName { get; init; }
+
+    /// <summary>
+    /// Optional status description.
+    /// </summary>
     public string? Description { get; init; }
+
+    /// <summary>
+    /// Technical semantic mapped to runtime transitions.
+    /// </summary>
     public WorkflowStatusSemantic Semantic { get; init; }
+
+    /// <summary>
+    /// Indicates whether status is fallback default for semantic.
+    /// </summary>
     public bool IsDefault { get; init; }
 }

@@ -1,6 +1,4 @@
-using Workflow.Abstractions;
-using Workflow.Engine;
-using Workflow.Persistence.EFCore;
+using Workflow.Framework;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,13 +9,15 @@ builder.Services.AddSwaggerGen();
 var connectionString = builder.Configuration.GetConnectionString("WorkflowPrimary")
     ?? "Server=(localdb)\\MSSQLLocalDB;Database=WorkflowEngine;Trusted_Connection=True;TrustServerCertificate=True";
 
-builder.Services.AddWorkflowPersistenceSqlServer(connectionString);
-builder.Services.AddWorkflowEngine();
-builder.Services.AddSingleton<IGroupProvider>(new StaticGroupProvider(new Dictionary<string, List<string>>
+builder.Services.AddWorkflowFramework(options =>
 {
-    ["HR_GROUP"] = ["user.hr.1", "user.hr.2"],
-    ["TEAMLEAD_GROUP"] = ["user.lead.1", "user.lead.2"]
-}));
+    options.ConnectionString = connectionString;
+    options.DashboardPath = builder.Configuration.GetValue<string>("WorkflowFramework:DashboardPath") ?? "/workflow-dashboard";
+    options.AutoMigrateDatabase = builder.Configuration.GetValue<bool?>("WorkflowFramework:AutoMigrateDatabase") ?? true;
+    options.DashboardAuthEnabled = builder.Configuration.GetValue<bool?>("WorkflowFramework:DashboardAuthEnabled") ?? false;
+    options.DashboardUsername = builder.Configuration.GetValue<string>("WorkflowFramework:DashboardUsername") ?? "admin";
+    options.DashboardPassword = builder.Configuration.GetValue<string>("WorkflowFramework:DashboardPassword") ?? "admin";
+});
 
 var app = builder.Build();
 
@@ -28,4 +28,5 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.UseWorkflowFrameworkDashboard();
 app.Run();

@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Engine", "src\Work
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Persistence.EFCore", "src\Workflow.Persistence.EFCore\Workflow.Persistence.EFCore.csproj", "{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Framework", "src\Workflow.Framework\Workflow.Framework.csproj", "{91A9F7B9-111A-4930-B72C-9A948C7A7251}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Api", "src\Workflow.Api\Workflow.Api.csproj", "{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Admin", "src\Workflow.Admin\Workflow.Admin.csproj", "{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}"
@@ -34,6 +36,10 @@ Global
 		{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91A9F7B9-111A-4930-B72C-9A948C7A7251}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91A9F7B9-111A-4930-B72C-9A948C7A7251}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91A9F7B9-111A-4930-B72C-9A948C7A7251}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91A9F7B9-111A-4930-B72C-9A948C7A7251}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}.Release|Any CPU.ActiveCfg = Release|Any CPU

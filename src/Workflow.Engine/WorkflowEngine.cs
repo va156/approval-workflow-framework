@@ -4,6 +4,9 @@ using Workflow.Abstractions;
 
 namespace Workflow.Engine;
 
+/// <summary>
+/// Default workflow engine implementation used for preview, start, and step actions.
+/// </summary>
 public sealed class WorkflowEngine : IWorkflowEngine
 {
     private readonly IProcessDefinitionRepository _definitionRepository;
@@ -18,6 +21,9 @@ public sealed class WorkflowEngine : IWorkflowEngine
     private readonly ConcurrentDictionary<Guid, object> _instanceLocks = new();
     private readonly ConcurrentDictionary<string, Func<IReadOnlyDictionary<string, object?>, bool>> _conditionCache = new();
 
+    /// <summary>
+    /// Creates engine with required repositories and adapters.
+    /// </summary>
     public WorkflowEngine(
         IProcessDefinitionRepository definitionRepository,
         IProcessInstanceRepository instanceRepository,
@@ -38,6 +44,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         _logger = logger;
     }
 
+    /// <inheritdoc />
     public async Task<WorkflowPreviewResult> PreviewAsync(PreviewRequest request, CancellationToken cancellationToken)
     {
         var definition = await GetPublishedDefinitionOrThrow(request.ProcessKey, cancellationToken);
@@ -50,6 +57,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         };
     }
 
+    /// <inheritdoc />
     public async Task<StartProcessResult> StartAsync(StartProcessRequest request, CancellationToken cancellationToken)
     {
         var definition = await GetPublishedDefinitionOrThrow(request.ProcessKey, cancellationToken);
@@ -77,6 +85,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         };
     }
 
+    /// <inheritdoc />
     public async Task<StepActionResult> ExecuteStepActionAsync(StepActionRequest request, CancellationToken cancellationToken)
     {
         var instance = await _instanceRepository.GetByStepIdAsync(request.StepId, cancellationToken)

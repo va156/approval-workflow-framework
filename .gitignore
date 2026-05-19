@@ -10,4 +10,6 @@ TestResults/
 agent-transcripts/
 mcps/
 terminals/
+.dotnet/
+dotnet-install.ps1
 

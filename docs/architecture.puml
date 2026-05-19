@@ -1,0 +1,34 @@
+@startuml
+title Approval Workflow Architecture
+
+package "Client Systems" {
+  [Business System]
+  [Admin UI]
+  [Dashboard UI]
+}
+
+package "Workflow API Layer" {
+  [Workflow.Api]
+  [Workflow.Framework]
+}
+
+package "Workflow Core" {
+  [Workflow.Engine]
+  [Workflow.Abstractions]
+}
+
+package "Persistence" {
+  [Workflow.Persistence.EFCore]
+  database "SQL Server\nWorkflowEngine" as Db
+}
+
+[Business System] --> [Workflow.Api] : preview/start/actions
+[Admin UI] --> [Workflow.Api] : definition CRUD
+[Dashboard UI] --> [Workflow.Framework] : monitoring
+[Workflow.Framework] --> [Workflow.Api] : endpoint mapping
+[Workflow.Api] --> [Workflow.Engine]
+[Workflow.Engine] --> [Workflow.Abstractions]
+[Workflow.Engine] --> [Workflow.Persistence.EFCore]
+[Workflow.Persistence.EFCore] --> Db
+
+@enduml

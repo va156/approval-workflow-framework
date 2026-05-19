@@ -170,7 +170,7 @@ public sealed class WorkflowEngineTests
     }
 
     [Fact]
-    public async Task Definition_Validation_Fails_On_Unknown_Bound_Status()
+    public Task Definition_Validation_Fails_On_Unknown_Bound_Status()
     {
         var definition = BuildDefinition("vacation", 1, ProcessDefinitionStatus.Draft, includeConditionalStep: false);
         definition.Nodes[0].StatusBindings.Add(new StepStatusBinding
@@ -181,6 +181,7 @@ public sealed class WorkflowEngineTests
 
         var errors = WorkflowDefinitionValidator.Validate(definition);
         Assert.NotEmpty(errors);
+        return Task.CompletedTask;
     }
 
     private static Task SeedDefinitionAsync(
