@@ -1,0 +1,57 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Abstractions", "src\Workflow.Abstractions\Workflow.Abstractions.csproj", "{A2F2A93F-5783-4DA8-8F56-A4AB5F97B578}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Engine", "src\Workflow.Engine\Workflow.Engine.csproj", "{C20FFB40-E9C9-46A1-9393-130113A17D8A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Persistence.EFCore", "src\Workflow.Persistence.EFCore\Workflow.Persistence.EFCore.csproj", "{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Api", "src\Workflow.Api\Workflow.Api.csproj", "{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Admin", "src\Workflow.Admin\Workflow.Admin.csproj", "{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Integration.VacationDemo", "src\Workflow.Integration.VacationDemo\Workflow.Integration.VacationDemo.csproj", "{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Engine.Tests", "tests\Workflow.Engine.Tests\Workflow.Engine.Tests.csproj", "{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A2F2A93F-5783-4DA8-8F56-A4AB5F97B578}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2F2A93F-5783-4DA8-8F56-A4AB5F97B578}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2F2A93F-5783-4DA8-8F56-A4AB5F97B578}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2F2A93F-5783-4DA8-8F56-A4AB5F97B578}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C20FFB40-E9C9-46A1-9393-130113A17D8A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C20FFB40-E9C9-46A1-9393-130113A17D8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C20FFB40-E9C9-46A1-9393-130113A17D8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C20FFB40-E9C9-46A1-9393-130113A17D8A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A7BA8F4-36D6-4C46-9A39-B3526D6D30D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E022DB43-5A7B-4BD6-BF1A-4EA94A5EE6AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
