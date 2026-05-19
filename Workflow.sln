@@ -14,8 +14,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Api", "src\Workflo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Admin", "src\Workflow.Admin\Workflow.Admin.csproj", "{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Integration.VacationDemo", "src\Workflow.Integration.VacationDemo\Workflow.Integration.VacationDemo.csproj", "{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Workflow.Engine.Tests", "tests\Workflow.Engine.Tests\Workflow.Engine.Tests.csproj", "{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}"
 EndProject
 Global
@@ -48,10 +46,6 @@ Global
 		{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7D3BC4D8-C38B-4F9F-93E0-6A265A76AAB8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3B0865F7-9C7F-4831-9B86-E5D5A8868A66}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7D88B43C-4A29-45E8-9CC8-7273E06D7FD7}.Release|Any CPU.ActiveCfg = Release|Any CPU

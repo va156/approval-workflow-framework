@@ -27,7 +27,6 @@ flowchart LR
 - `Workflow.Framework`: host extension layer with one-line setup, auto-migration, and dashboard routes.
 - `Workflow.Api`: external REST interface for definition/runtime operations.
 - `Workflow.Admin`: minimal administrator-facing entry points.
-- `Workflow.Integration.VacationDemo`: sample host integration.
 
 ## Runtime sequence
 

@@ -30,7 +30,6 @@ The project is intentionally system-agnostic: business systems provide request d
 - `src/Workflow.Framework` - one-line host integration, auto-migration, and embedded dashboard.
 - `src/Workflow.Api` - REST API for process definitions, custom statuses, preview/start, and step actions.
 - `src/Workflow.Admin` - lightweight admin surface for definition operations and preview.
-- `src/Workflow.Integration.VacationDemo` - demo integration scenario for vacation requests.
 - `tests/Workflow.Engine.Tests` - engine behavior tests.
 
 ## Implemented MVP capabilities
