@@ -141,9 +141,11 @@ public static class FrameworkExtensions
             return Results.Ok(payload);
         });
 
-        app.MapGet($"{path}/api/instances", async (IProcessInstanceRepository repo, string? state, string? search, CancellationToken ct) =>
+        app.MapGet($"{path}/api/instances", async (IProcessInstanceRepository repo, IProcessDefinitionRepository definitionRepo, string? state, string? search, CancellationToken ct) =>
         {
             var instances = await repo.GetRecentAsync(500, ct);
+            var definitions = await definitionRepo.GetAllAsync(ct);
+            var definitionMap = definitions.ToDictionary(x => x.Id, x => x);
             var query = instances.AsEnumerable();
             if (!string.IsNullOrWhiteSpace(state))
             {
@@ -157,7 +159,7 @@ public static class FrameworkExtensions
                     || x.RequestId.Contains(search, StringComparison.OrdinalIgnoreCase));
             }
 
-            var payload = query.Select(ToDashboardInstance);
+            var payload = query.Select(x => ToDashboardInstance(x, definitionMap));
             return Results.Ok(payload);
         });
 
@@ -304,13 +306,17 @@ public static class FrameworkExtensions
         }
     }
 
-    private static object ToDashboardInstance(ProcessInstance x) => new
+    private static object ToDashboardInstance(ProcessInstance x) =>
+        ToDashboardInstance(x, new Dictionary<Guid, ProcessDefinition>());
+
+    private static object ToDashboardInstance(ProcessInstance x, IReadOnlyDictionary<Guid, ProcessDefinition> definitions) => new
     {
         x.Id,
         x.ProcessKey,
         x.DefinitionVersion,
         x.RequestId,
         x.State,
+        CurrentStage = GetCurrentStageLabel(x, definitions.TryGetValue(x.DefinitionId, out var def) ? def : null),
         StepCount = x.Steps.Count,
         UpdatedAtUtc = x.Steps.Select(s => s.History.LastOrDefault()?.ChangedAtUtc ?? s.CreatedAtUtc).DefaultIfEmpty().Max(),
         Steps = x.Steps.Select(s => new
@@ -322,6 +328,55 @@ public static class FrameworkExtensions
             ResponsibleUsers = s.Assignments.Select(a => a.PrincipalId).ToList()
         })
     };
+
+    private static string GetCurrentStageLabel(ProcessInstance instance, ProcessDefinition? definition)
+    {
+        var active = instance.Steps
+            .Where(step => step.Status is StepStatus.Pending or StepStatus.Unclaimed or StepStatus.InProgress)
+            .FirstOrDefault();
+
+        if (active is not null)
+        {
+            var stage = definition is null ? null : ResolveStageNumber(definition, active.NodeId);
+            return stage.HasValue ? $"Этап {stage.Value} — {active.Name}" : active.Name;
+        }
+
+        return instance.State switch
+        {
+            "Approved" => "Процесс завершен",
+            "Rejected" => "Отклонено",
+            "ReworkRequested" => "Возврат на доработку",
+            _ => "Ожидание"
+        };
+    }
+
+    private static int? ResolveStageNumber(ProcessDefinition definition, Guid nodeId)
+    {
+        var ordered = definition.Nodes.OrderBy(x => x.SortOrder).ToList();
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var root = ordered[i];
+            if (root.Id == nodeId || ContainsNode(root.Children, nodeId))
+            {
+                return i + 1;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool ContainsNode(IEnumerable<NodeDefinition> nodes, Guid targetNodeId)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Id == targetNodeId || ContainsNode(node.Children, targetNodeId))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static string GetDashboardHtml() =>
         """
@@ -401,7 +456,7 @@ public static class FrameworkExtensions
                 <div class="card">
                   <h3>Instances</h3>
                   <table>
-                    <thead><tr><th>ProcessKey</th><th>RequestId</th><th>State</th><th>Version</th><th>Steps</th><th>Actions</th><th>Updated (UTC)</th></tr></thead>
+                    <thead><tr><th>ProcessKey</th><th>RequestId</th><th>State</th><th>Current stage</th><th>Version</th><th>Steps</th><th>Actions</th><th>Updated (UTC)</th></tr></thead>
                     <tbody id="instancesBody"></tbody>
                   </table>
                 </div>
@@ -504,6 +559,7 @@ public static class FrameworkExtensions
                   <td>${x.processKey}</td>
                   <td>${x.requestId}</td>
                   <td>${x.state}</td>
+                  <td>${x.currentStage ?? "-"}</td>
                   <td>${x.definitionVersion}</td>
                   <td>${(x.steps || []).map(s => `<span class="step-chip">${s.name}:${s.customStatusName}</span>`).join("")}</td>
                   <td>${(x.steps || []).map(s =>

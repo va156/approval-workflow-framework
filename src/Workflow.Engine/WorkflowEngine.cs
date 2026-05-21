@@ -73,6 +73,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
             Steps = projections.Select(ToStepInstance).ToList()
         };
         ApplyInitialCustomStatuses(definition, instance);
+        ApplyInitialStageGating(definition, instance);
 
         await _instanceRepository.UpsertAsync(instance, cancellationToken);
         await _unitOfWork.CommitAsync(cancellationToken);
@@ -130,7 +131,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
             }
         }
 
-        await ApplyBlockAndProcessTransitionsAsync(instance, cancellationToken);
+        await ApplyBlockAndProcessTransitionsAsync(instance, definition, cancellationToken);
         await _instanceRepository.UpsertAsync(instance, cancellationToken);
         await _unitOfWork.CommitAsync(cancellationToken);
 
@@ -354,8 +355,11 @@ public sealed class WorkflowEngine : IWorkflowEngine
         });
     }
 
-    private async Task ApplyBlockAndProcessTransitionsAsync(ProcessInstance instance, CancellationToken cancellationToken)
+    private async Task ApplyBlockAndProcessTransitionsAsync(ProcessInstance instance, ProcessDefinition definition, CancellationToken cancellationToken)
     {
+        var nodeMap = FlattenNodes(definition.Nodes).ToDictionary(x => x.Id);
+        var topLevelOrderMap = BuildTopLevelOrderMap(definition);
+
         var byBlock = instance.Steps
             .Where(x => x.ParentBlockNodeId.HasValue)
             .GroupBy(x => x.ParentBlockNodeId!.Value)
@@ -374,17 +378,157 @@ public sealed class WorkflowEngine : IWorkflowEngine
             }
         }
 
-        if (instance.Steps.All(x => x.Status == StepStatus.Approved))
-        {
-            instance.State = "Approved";
-        }
-        else if (instance.Steps.Any(x => x.Status == StepStatus.Rejected))
+        if (instance.Steps.Any(x => x.Status == StepStatus.Rejected))
         {
             instance.State = "Rejected";
+        }
+        else if (instance.Steps.Any(x => x.Status == StepStatus.ReworkRequested))
+        {
+            instance.State = "ReworkRequested";
+        }
+        else
+        {
+            TryActivateNextStage(instance, definition, nodeMap, topLevelOrderMap);
+            if (instance.Steps.All(x => x.Status == StepStatus.Approved))
+            {
+                instance.State = "Approved";
+            }
+            else
+            {
+                instance.State = "InProgress";
+            }
         }
 
         await RecalculateDynamicAssignmentsAsync(instance, cancellationToken);
         await SendStatusNotificationsAsync(instance, cancellationToken);
+    }
+
+    private static IReadOnlyDictionary<Guid, int> BuildTopLevelOrderMap(ProcessDefinition definition)
+    {
+        var map = new Dictionary<Guid, int>();
+        foreach (var top in definition.Nodes)
+        {
+            map[top.Id] = top.SortOrder;
+            foreach (var child in FlattenNodes(top.Children))
+            {
+                map[child.Id] = top.SortOrder;
+            }
+        }
+
+        return map;
+    }
+
+    private static void ApplyInitialStageGating(ProcessDefinition definition, ProcessInstance instance)
+    {
+        var orderMap = BuildTopLevelOrderMap(definition);
+        var firstStageOrder = instance.Steps
+            .Select(x => orderMap.TryGetValue(x.NodeId, out var order) ? order : int.MaxValue)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
+        if (firstStageOrder == int.MaxValue)
+        {
+            return;
+        }
+
+        var nodeMap = FlattenNodes(definition.Nodes).ToDictionary(x => x.Id);
+        foreach (var step in instance.Steps)
+        {
+            if (!orderMap.TryGetValue(step.NodeId, out var order))
+            {
+                continue;
+            }
+
+            if (order <= firstStageOrder)
+            {
+                continue;
+            }
+
+            if (!nodeMap.TryGetValue(step.NodeId, out var node))
+            {
+                continue;
+            }
+
+            step.Status = StepStatus.Cancelled;
+            var custom = ResolveCustomStatus(node, definition, WorkflowStatusSemantic.Cancelled);
+            step.CustomStatusKey = custom.Key;
+            step.CustomStatusName = custom.Name;
+        }
+    }
+
+    private static bool TryActivateNextStage(
+        ProcessInstance instance,
+        ProcessDefinition definition,
+        IReadOnlyDictionary<Guid, NodeDefinition> nodeMap,
+        IReadOnlyDictionary<Guid, int> topLevelOrderMap)
+    {
+        var activeOrders = instance.Steps
+            .Where(x => x.Status is StepStatus.Pending or StepStatus.Unclaimed or StepStatus.InProgress)
+            .Select(x => topLevelOrderMap.TryGetValue(x.NodeId, out var order) ? order : int.MaxValue)
+            .Where(x => x != int.MaxValue)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+
+        if (activeOrders.Count > 0)
+        {
+            var currentOrder = activeOrders[0];
+            var currentStageSteps = instance.Steps
+                .Where(x => topLevelOrderMap.TryGetValue(x.NodeId, out var order) && order == currentOrder)
+                .ToList();
+
+            if (currentStageSteps.Any(x => x.Status is StepStatus.Pending or StepStatus.Unclaimed or StepStatus.InProgress))
+            {
+                return false;
+            }
+
+            if (currentStageSteps.Any(x => x.Status != StepStatus.Approved))
+            {
+                return false;
+            }
+        }
+
+        var nextOrder = instance.Steps
+            .Where(x => x.Status == StepStatus.Cancelled)
+            .Select(x => topLevelOrderMap.TryGetValue(x.NodeId, out var order) ? order : int.MaxValue)
+            .Where(x => x != int.MaxValue)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
+        if (nextOrder == int.MaxValue)
+        {
+            return false;
+        }
+
+        var activated = false;
+        foreach (var step in instance.Steps.Where(x =>
+                     x.Status == StepStatus.Cancelled
+                     && topLevelOrderMap.TryGetValue(x.NodeId, out var order)
+                     && order == nextOrder))
+        {
+            if (!nodeMap.TryGetValue(step.NodeId, out var nodeDefinition))
+            {
+                continue;
+            }
+
+            var nextStatus = step.Assignments.Count > 1 ? StepStatus.Unclaimed : StepStatus.Pending;
+            var semantic = nextStatus == StepStatus.Unclaimed ? WorkflowStatusSemantic.Unclaimed : WorkflowStatusSemantic.Pending;
+            var custom = ResolveCustomStatus(nodeDefinition, definition, semantic);
+            step.Status = nextStatus;
+            step.CustomStatusKey = custom.Key;
+            step.CustomStatusName = custom.Name;
+            step.History.Add(new StepStatusHistoryItem
+            {
+                ChangedBy = "system",
+                NewStatus = nextStatus,
+                CustomStatusKey = custom.Key,
+                CustomStatusName = custom.Name,
+                Comment = "Stage activated"
+            });
+            activated = true;
+        }
+
+        return activated;
     }
 
     private async Task RecalculateDynamicAssignmentsAsync(ProcessInstance instance, CancellationToken cancellationToken)

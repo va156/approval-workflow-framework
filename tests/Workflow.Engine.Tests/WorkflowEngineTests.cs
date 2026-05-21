@@ -67,10 +67,20 @@ public sealed class WorkflowEngineTests
             RequestData = new Dictionary<string, object?> { ["ManagerId"] = "manager.1" }
         }, CancellationToken.None);
 
-        var groupStep = started.ActiveSteps.First(s => s.StepName == "HR Quota Check");
+        var managerStep = started.ActiveSteps.First(s => s.StepName == "Manager Approval");
+        await ctx.Engine.ExecuteStepActionAsync(new StepActionRequest
+        {
+            StepId = managerStep.StepId,
+            Action = StepActionType.Approve,
+            UserId = "manager.1"
+        }, CancellationToken.None);
+
+        var instances = await ctx.InstanceRepository.GetRecentAsync(10, CancellationToken.None);
+        var runtime = instances.Single(x => x.RequestId == "REQ-2");
+        var groupStep = runtime.Steps.First(s => s.Name == "HR Quota Check");
         var claimed = await ctx.Engine.ExecuteStepActionAsync(new StepActionRequest
         {
-            StepId = groupStep.StepId,
+            StepId = groupStep.Id,
             Action = StepActionType.Claim,
             UserId = "hr.1"
         }, CancellationToken.None);
@@ -92,15 +102,35 @@ public sealed class WorkflowEngineTests
         }, CancellationToken.None);
 
         StepActionResult? final = null;
-        foreach (var step in started.ActiveSteps)
+        var openSteps = started.ActiveSteps.ToList();
+        while (openSteps.Count > 0)
         {
-            final = await ctx.Engine.ExecuteStepActionAsync(new StepActionRequest
+            foreach (var step in openSteps)
             {
-                StepId = step.StepId,
-                Action = StepActionType.Approve,
-                UserId = step.ResponsibleUsers.FirstOrDefault() ?? "user"
-            }, CancellationToken.None);
+                final = await ctx.Engine.ExecuteStepActionAsync(new StepActionRequest
+                {
+                    StepId = step.StepId,
+                    Action = StepActionType.Approve,
+                    UserId = step.ResponsibleUsers.FirstOrDefault() ?? "user"
+                }, CancellationToken.None);
+            }
+
+            var runtime = (await ctx.InstanceRepository.GetRecentAsync(10, CancellationToken.None))
+                .Single(x => x.RequestId == "REQ-3");
+            openSteps = runtime.Steps
+                .Where(x => x.Status is StepStatus.Pending or StepStatus.Unclaimed or StepStatus.InProgress)
+                .Select(x => new StepActionProjection
+                {
+                    StepId = x.Id,
+                    StepName = x.Name,
+                    Status = x.Status,
+                    CustomStatusKey = x.CustomStatusKey,
+                    CustomStatusName = x.CustomStatusName,
+                    ResponsibleUsers = x.Assignments.Select(a => a.PrincipalId).ToList()
+                })
+                .ToList();
         }
+
         Assert.NotNull(final);
         Assert.Equal("Approved", final!.ProcessState);
         Assert.Equal("completed", final.CustomStatusKey);
@@ -142,18 +172,28 @@ public sealed class WorkflowEngineTests
             RequestData = new Dictionary<string, object?> { ["ManagerId"] = "manager.1" }
         }, CancellationToken.None);
 
-        var blockSteps = started.ActiveSteps.Where(s => s.StepName is "HR Quota Check" or "Team Lead Substitution Check").ToList();
+        var manager = started.ActiveSteps.First(s => s.StepName == "Manager Approval");
         await ctx.Engine.ExecuteStepActionAsync(new StepActionRequest
         {
-            StepId = blockSteps[0].StepId,
+            StepId = manager.StepId,
             Action = StepActionType.Approve,
-            UserId = blockSteps[0].ResponsibleUsers.First()
+            UserId = "manager.1"
+        }, CancellationToken.None);
+
+        var runtime = (await ctx.InstanceRepository.GetRecentAsync(10, CancellationToken.None))
+            .Single(x => x.RequestId == "REQ-5");
+        var blockSteps = runtime.Steps.Where(s => s.Name is "HR Quota Check" or "Team Lead Substitution Check").ToList();
+        await ctx.Engine.ExecuteStepActionAsync(new StepActionRequest
+        {
+            StepId = blockSteps[0].Id,
+            Action = StepActionType.Approve,
+            UserId = blockSteps[0].Assignments.First().PrincipalId
         }, CancellationToken.None);
         var result = await ctx.Engine.ExecuteStepActionAsync(new StepActionRequest
         {
-            StepId = blockSteps[1].StepId,
+            StepId = blockSteps[1].Id,
             Action = StepActionType.Rework,
-            UserId = blockSteps[1].ResponsibleUsers.First()
+            UserId = blockSteps[1].Assignments.First().PrincipalId
         }, CancellationToken.None);
 
         Assert.Equal("ReworkRequested", result.ProcessState);
@@ -223,7 +263,7 @@ public sealed class WorkflowEngineTests
             new NullNotificationService(),
             NullLogger<WorkflowEngine>.Instance);
 
-        return Task.FromResult(new TestEngineContext(engine, definitionRepo));
+        return Task.FromResult(new TestEngineContext(engine, definitionRepo, instanceRepo));
     }
 
     private static ProcessDefinition BuildDefinition(string key, int version, ProcessDefinitionStatus status, bool includeConditionalStep)
@@ -324,5 +364,8 @@ public sealed class WorkflowEngineTests
         return definition;
     }
 
-    private sealed record TestEngineContext(IWorkflowEngine Engine, IProcessDefinitionRepository DefinitionRepository);
+    private sealed record TestEngineContext(
+        IWorkflowEngine Engine,
+        IProcessDefinitionRepository DefinitionRepository,
+        IProcessInstanceRepository InstanceRepository);
 }
